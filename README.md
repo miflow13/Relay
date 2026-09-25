@@ -23,9 +23,11 @@ The first milestone is deliberately constrained. The agents can create/edit file
 - Local models:
 
 ```bash
-ollama pull qwen2.5-coder:7b
-ollama pull qwen3:8b
+ollama pull qwen2.5-coder:3b
+ollama pull qwen3:4b
 ```
+
+These lighter defaults are intended to keep the first experiment responsive on consumer hardware. Larger models can still be selected from the CLI.
 
 Verify Ollama is running:
 
@@ -124,8 +126,10 @@ This is still experimental software rather than a hardened security boundary. Ke
 
 | Role | Model |
 | --- | --- |
-| Builder | `qwen2.5-coder:7b` |
-| Reviewer | `qwen3:8b` |
+| Builder | `qwen2.5-coder:3b` |
+| Reviewer | `qwen3:4b` |
+
+The previous 7B/8B defaults were intentionally reduced after early testing showed they could overwhelm a desktop when Ollama fell back heavily to CPU.
 
 Override either from the CLI:
 
