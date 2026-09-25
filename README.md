@@ -4,9 +4,9 @@ RelayLab is a local-first experiment in autonomous software development.
 
 Two Ollama-powered agents collaborate on the same isolated workspace:
 
-- **Builder** — implements the requested app by proposing file writes and safe verification commands.
-- **Reviewer** — inspects the resulting workspace and either approves it or sends concrete feedback.
-- **Orchestrator** — applies changes, runs deterministic checks, logs every round, and stops at a hard iteration limit.
+- **Builder** — implements the requested app by proposing complete file writes/deletes.
+- **Reviewer** — independently inspects the resulting workspace and either approves it or sends concrete feedback.
+- **Orchestrator** — applies changes, performs deterministic static checks, logs every round, and stops at a hard iteration limit.
 
 No cloud model API is required.
 
@@ -14,7 +14,7 @@ No cloud model API is required.
 
 **v0.1 experimental scaffold**
 
-The first milestone is deliberately constrained: the agents can create/edit files only inside an experiment workspace and can request only a small allowlist of verification commands. This makes the conversation observable before we give the agents broader computer access.
+The first milestone is deliberately constrained. The agents can create/edit files only inside one experiment workspace. **They do not receive shell access in v0.1.** This lets us observe the Builder → Reviewer feedback loop before adding more dangerous capabilities.
 
 ## Requirements
 
@@ -43,7 +43,11 @@ cd RelayLab
 python -m venv .venv
 source .venv/bin/activate
 
-python relay.py "Build a tiny single-page notes app with add, complete, and delete actions." --name notes-v1
+python -m unittest discover -s tests -v
+
+python relay.py \
+  "Build a tiny single-page notes app with add, complete, and delete actions." \
+  --name notes-v1
 ```
 
 RelayLab will create:
@@ -60,30 +64,61 @@ task
   ↓
 Builder
   ↓
-safe file actions
+structured file actions
   ↓
-deterministic checks
+RelayLab applies changes
+  ↓
+static deterministic checks
   ↓
 Reviewer
   ├─ changes_requested → Builder
   └─ approved → done
 ```
 
-The loop stops after 6 rounds by default even if the reviewer never approves.
+The loop stops after 6 rounds by default even if the Reviewer never approves.
+
+## v0.1 protocol
+
+The Builder must return JSON:
+
+```json
+{
+  "summary": "What changed",
+  "files": [
+    {
+      "path": "index.html",
+      "content": "<!doctype html>..."
+    }
+  ],
+  "deletes": []
+}
+```
+
+The Reviewer must return JSON:
+
+```json
+{
+  "status": "approved",
+  "feedback": "Why this satisfies the task."
+}
+```
+
+Ollama is requested to return JSON-formatted responses, and RelayLab validates the protocol before applying actions.
 
 ## Safety model
 
-v0.1 intentionally does **not** give a model unrestricted shell access.
+v0.1 intentionally does **not** give either model unrestricted computer access.
 
 - Files are resolved against one experiment workspace.
 - Absolute paths and `..` path traversal are rejected.
-- Requested commands are executed without a shell.
-- Only a narrow command allowlist is accepted.
-- Destructive Git operations and pushes are unavailable.
-- Every agent response, applied action, command result, and review is logged.
+- Model-authored code is not executed.
+- Python source is syntax-compiled without running it.
+- JSON files are parsed without running generated programs.
+- Git operations and pushes are unavailable to the agents.
+- Every agent response, applied action, check result, and review is logged.
 - Runs have a hard maximum-round limit.
 
-> **Important:** this is not a hardened OS sandbox. Generated programs may themselves contain network or filesystem code. Use RelayLab only with disposable experiment workspaces until process/container isolation is added.
+This is still experimental software rather than a hardened security boundary. Keep generated work disposable until stronger process/container isolation is added.
 
 ## Default models
 
@@ -112,6 +147,29 @@ RelayLab is meant to become an actual experiment, not just a chatbot demo. Each 
 - final artifacts
 - whether a two-agent loop improves over a single-agent baseline
 
+## Repository layout
+
+```text
+RelayLab/
+├── relaylab/
+│   ├── agents/
+│   │   ├── builder.py
+│   │   └── reviewer.py
+│   ├── config.py
+│   ├── jsonutil.py
+│   ├── ollama_client.py
+│   ├── orchestrator.py
+│   └── workspace.py
+├── prompts/
+│   ├── builder.md
+│   └── reviewer.md
+├── experiments/
+├── runs/
+├── tests/
+├── relay.py
+└── pyproject.toml
+```
+
 ## Roadmap
 
 - [x] Local Ollama client
@@ -120,8 +178,11 @@ RelayLab is meant to become an actual experiment, not just a chatbot demo. Each 
 - [x] Workspace path isolation
 - [x] Hard iteration limit
 - [x] JSON run transcripts
+- [x] Deterministic static checks
+- [x] GitHub Actions unit tests
 - [ ] Strong OS/container sandbox
-- [ ] Rich command/tool calling
+- [ ] Controlled shell/tool calling
+- [ ] Browser-based app verification
 - [ ] Git checkpoints per accepted round
 - [ ] Single-agent baseline mode
 - [ ] Run comparison metrics
