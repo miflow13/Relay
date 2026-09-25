@@ -40,13 +40,46 @@ class OllamaClient:
                 request, timeout=self.timeout_seconds
             ) as response:
                 body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = ""
+            try:
+                raw = exc.read().decode("utf-8", errors="replace")
+                if raw:
+                    try:
+                        error_body = json.loads(raw)
+                        detail = str(error_body.get("error", raw))
+                    except json.JSONDecodeError:
+                        detail = raw
+            except Exception:
+                pass
+
+            message = f"Ollama returned HTTP {exc.code}"
+            if detail:
+                message += f": {detail}"
+
+            if exc.code == 404:
+                message += (
+                    f"\nModel requested: {model!r}. "
+                    "Confirm it appears in 'ollama list'."
+                )
+            elif exc.code >= 500:
+                message += (
+                    "\nThe Ollama server was reached, but the model runner failed. "
+                    "Try the model directly with 'ollama run' and inspect "
+                    "'journalctl -u ollama -n 100 --no-pager' if Ollama runs as a service."
+                )
+
+            raise OllamaError(message) from exc
         except urllib.error.URLError as exc:
             raise OllamaError(
-                "Could not reach Ollama. Make sure 'ollama serve' is running "
-                f"and that {self.base_url} is reachable."
+                "Could not connect to Ollama. Make sure the Ollama service is running "
+                f"and that {self.base_url} is reachable. Underlying error: {exc}"
             ) from exc
         except json.JSONDecodeError as exc:
             raise OllamaError("Ollama returned a non-JSON response.") from exc
+
+        if "error" in body:
+            raise OllamaError(f"Ollama error: {body['error']}")
 
         try:
             return body["message"]["content"]
