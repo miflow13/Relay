@@ -20,12 +20,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--builder-model",
-        default="qwen2.5-coder:7b",
+        default="qwen2.5-coder:3b",
         help="Ollama model used by the Builder.",
     )
     parser.add_argument(
         "--reviewer-model",
-        default="qwen3:8b",
+        default="qwen3:4b",
         help="Ollama model used by the Reviewer.",
     )
     parser.add_argument(
