@@ -1,4 +1,4 @@
-RelayLab is a local-first experiment in autonomous software development.
+# RelayLab is a local-first experiment in autonomous software development.
 
 Two Ollama-powered agents collaborate on the same isolated workspace:
 
