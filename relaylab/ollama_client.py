@@ -24,6 +24,7 @@ class OllamaClient:
             "model": model,
             "messages": messages,
             "stream": False,
+            "format": "json",
             "options": {"temperature": temperature},
         }
 
